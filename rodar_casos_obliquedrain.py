@@ -18,7 +18,7 @@ A_plus = self.copy_mat(p_rows, p_cols, shape=len(self.volumes))
 self.sum_into_diagonal(A_plus)
 A_minus = A - A_plus
 x_minus = self.solve_original_problem(A_minus, q)
-# x = self.solve_original_problem(A, q)
+#x = self.solve_original_problem(A, q)
 self.mb.tag_set_data(self.pressure_tag, self.volumes, x_minus)
 self.tag_verts_pressure()
 all_faces = self.dirichlet_faces.union(

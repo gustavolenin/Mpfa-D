@@ -66,6 +66,7 @@ class MpfaD3D:
         std_map = Epetra.Map(len(self.volumes), 0, self.comm)
         self.T = Epetra.CrsMatrix(Epetra.Copy, std_map, 0)
         self.Q = Epetra.Vector(std_map)
+        self.alphaQ = Epetra.Vector(std_map)
         if x is None:
             self.x = Epetra.Vector(std_map)
         else:
@@ -277,7 +278,10 @@ class MpfaD3D:
                                       + adj_volumes_pressure\
                                           .flatten().tolist()
          p_max_local = max(surrounding_pressure_patch)
+         p_max_local = max(p_max_local,volume_pressure)
          p_min_local = min(surrounding_pressure_patch)
+         p_min_local = min(p_min_local,volume_pressure)
+
 #         p_max_local = max(
 #             0, volume_pressure + max(
 #                 [adj_p - volume_pressure for adj_p in surrounding_pressure_patch]
@@ -324,6 +328,8 @@ class MpfaD3D:
                 # rts = (min_v - _u)
                 rts = 2 * self.mis[volume] * (min_v - _u)
                 _s = max(lp, rts)
+
+            slip_factor = (_s + 1e-20) / (lp + 1e-20)
                 
         else:
             volume, adj = self.mtu.get_bridge_adjacencies(face, 2, 3)
@@ -333,21 +339,22 @@ class MpfaD3D:
             u_adj = self.mb.tag_get_data(self.pressure_tag, adj)
             lp = _u - u_adj
             if _u > u_adj:
-                lfs = 2 * self.mis[volume] * (max_v - _u)
-                rts = 2 * self.mis[adj] * (u_adj - min_v_adj)
-                # lfs = (max_v - _u)
-                # rts = (u_adj - min_v_adj)
+                #lfs = 2 * self.mis[volume] * (max_v - _u)
+                #rts = 2 * self.mis[adj] * (u_adj - min_v_adj)
+                lfs = (max_v - _u)
+                rts = (u_adj - min_v_adj)
                 _s = min(lfs, lp, rts)
                 slip_factor = (_s + 1e-20) / (lp + 1e-20)
+
             else:
-                lfs = 2 * self.mis[volume] * (min_v - _u)
-                rts = 2 * self.mis[adj] * (u_adj - max_v)
-                # lfs = (min_v - _u)
-                # rts = (u_adj - max_v)
+                #lfs = 2 * self.mis[volume] * (min_v - _u)
+                #rts = 2 * self.mis[adj] * (u_adj - max_v)
+                lfs = (min_v - _u)
+                rts = (u_adj - max_v)
                 lp = -lp
                 _s = max(lfs, lp, rts)
                 slip_factor = (_s + 1e-20) / (lp + 1e-20)
-        slip_factor = (_s + 1e-20) / (lp + 1e-20)
+
         if abs(slip_factor) < 1e-15:
             slip_factor = 0
         return slip_factor
@@ -448,11 +455,14 @@ class MpfaD3D:
             )
             K_eq = (1 / h_L) * (face_area * K_n_L)
 
-            RHS = D_JK * (g_I - g_J) - K_eq * g_J + D_JI * (g_J - g_K)
+            # RHS = D_JK * (g_I - g_J) - K_eq * g_J + D_JI * (g_J - g_K)
+            RHS = D_JK * (g_I - g_J)  + D_JI * (g_J - g_K)
+            rhs = - K_eq * g_J 
             LHS = K_eq
             all_LHS.append(LHS)
 
             self.Q[id_volume] += -RHS
+            self.alphaQ[id_volume] += - rhs
             self.aux_q[id_volume].append({node: -RHS for node in [I, J, K]})
             # self.Q[id_volume, 0] += - RHS
             # self.mb.tag_set_data(self.flux_info_tag, face,
@@ -623,7 +633,7 @@ class MpfaD3D:
 
         residual = q -  (A_minus + A_plus)*x_minus# Resíduo - Equação 70 (Kuzmin)
         number = 0
-        while np.max(np.abs(residual)) > 1E-10:    
+        while np.max(np.abs(residual)) > 1E-3:    
             dx_minus = self.solve_original_problem(A_minus, residual)
             x_minus += dx_minus
             residual = q -  (A_minus + A_plus)*x_minus# Resíduo - Equação 70 (Kuzmin)
@@ -631,8 +641,9 @@ class MpfaD3D:
             
             if number == 100:
                 break
+        
+        return x_minus, residual, number
 
-        # Precisa verificar como chamar o volume e não aparecer números gigantes
 
     def savefig(self, df, column_name, figname):
 
