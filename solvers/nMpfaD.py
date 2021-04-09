@@ -310,6 +310,7 @@ class MpfaD3D:
          return p_max_local, p_min_local
 
     def compute_slip_fact(self, face):
+
         if face in self.dirichlet_faces | self.neumann_faces:
             volume = self.mtu.get_bridge_adjacencies(face, 2, 3)
             _u = self.mb.tag_get_data(self.pressure_tag, volume)
@@ -324,10 +325,22 @@ class MpfaD3D:
                 # lfs = (max_v - _u)
                 lfs = 2 * self.mis[volume] * (max_v - _u)
                 _s = min(lfs, lp)
+                slip_factor = (_s + 1e-20) / (lp + 1e-20)
+                if abs(slip_factor) < 1e-15:
+                    slip_factor = 0
+                if slip_factor < 0 or slip_factor > 1:
+                    print('if dentro do else')
+                    print(slip_factor)
             else:
                 # rts = (min_v - _u)
                 rts = 2 * self.mis[volume] * (min_v - _u)
                 _s = max(lp, rts)
+                slip_factor = (_s + 1e-20) / (lp + 1e-20)
+                if abs(slip_factor) < 1e-15:
+                    slip_factor = 0
+                if slip_factor < 0 or slip_factor > 1:
+                    print('else dentro do else')
+                    print(slip_factor)
 
             slip_factor = (_s + 1e-20) / (lp + 1e-20)
                 
@@ -339,24 +352,33 @@ class MpfaD3D:
             u_adj = self.mb.tag_get_data(self.pressure_tag, adj)
             lp = _u - u_adj
             if _u > u_adj:
-                #lfs = 2 * self.mis[volume] * (max_v - _u)
-                #rts = 2 * self.mis[adj] * (u_adj - min_v_adj)
-                lfs = (max_v - _u)
-                rts = (u_adj - min_v_adj)
+                lfs = 2 * self.mis[volume] * (max_v - _u)
+                rts = 2 * self.mis[adj] * (u_adj - min_v_adj)
+                # lfs = (max_v - _u)
+                # rts = (u_adj - min_v_adj)
                 _s = min(lfs, lp, rts)
                 slip_factor = (_s + 1e-20) / (lp + 1e-20)
-
+                if slip_factor < 0 or slip_factor > 1:
+                    print('if dentro do else')
+                    print(slip_factor)
+                
             else:
-                #lfs = 2 * self.mis[volume] * (min_v - _u)
-                #rts = 2 * self.mis[adj] * (u_adj - max_v)
-                lfs = (min_v - _u)
-                rts = (u_adj - max_v)
+                lfs = 2 * self.mis[volume] * (min_v - _u)
+                rts = 2 * self.mis[adj] * (u_adj - max_v)
+                # lfs = (min_v - _u)
+                # rts = (u_adj - max_v)
                 lp = -lp
                 _s = max(lfs, lp, rts)
                 slip_factor = (_s + 1e-20) / (lp + 1e-20)
-
+                if slip_factor < 0 or slip_factor > 1:
+                    print('else dentro do else')
+                    print(slip_factor)
+        
         if abs(slip_factor) < 1e-15:
             slip_factor = 0
+        
+        
+
         return slip_factor
 
     def run_solver(self, interpolation_method):
