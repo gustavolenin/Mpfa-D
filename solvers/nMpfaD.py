@@ -637,12 +637,28 @@ class MpfaD3D:
         self.sum_into_diagonal(A_plus)
         A_minus = A - A_plus
         x_minus = self.solve_original_problem(A_minus, q)
+        residual = q -  (A_minus + A_plus)*x_minus# Resíduo - Equação 70 (Kuzmin)
+        number = 0
         self.mb.tag_set_data(self.pressure_tag, self.volumes, x_minus)
         self.tag_verts_pressure()
         all_faces = self.dirichlet_faces.union(
             self.neumann_faces.union(self.intern_faces)
         )
-        for face in all_faces:
+        for face in self.dirichlet_faces.union(self.neumann_faces):
+            alpha = self.compute_slip_fact(face)
+            try:
+                #import pdb; pdb.set_trace()
+                row = self.mb.tag_get_data(
+                    self.global_id_tag, self.mtu.get_bridge_adjacencies(face, 2, 3)
+                )
+                q[row] -= (1-alpha)*A_plus[row,row]
+                A_plus[row, row] *= alpha
+            except ValueError:
+                print('AQUI')
+
+                # self.aux_q[id_volume].append({node: -RHS for node in [I, J, K]})
+                pass
+        for face in self.intern_faces:
             alpha = self.compute_slip_fact(face)
             try:
                 row, col = self.mb.tag_get_data(
@@ -653,17 +669,57 @@ class MpfaD3D:
                 # self.aux_q[id_volume].append({node: -RHS for node in [I, J, K]})
                 pass
 
-        residual = q -  (A_minus + A_plus)*x_minus# Resíduo - Equação 70 (Kuzmin)
-        number = 0
         while np.max(np.abs(residual)) > 1E-3:    
+
+
             dx_minus = self.solve_original_problem(A_minus, residual)
             x_minus += dx_minus
             residual = q -  (A_minus + A_plus)*x_minus# Resíduo - Equação 70 (Kuzmin)
             number += 1
-            
-            if number == 100:
-                break
+            rows, cols = self.get_global_rows()
+            q = np.asarray(self.Q)
+            p_rows, p_cols = self.get_only_positive_off_diagonal_values(
+                rows, cols
+            )
+            A_plus = self.copy_mat(p_rows, p_cols, shape=len(self.volumes))
+            self.sum_into_diagonal(A_plus)
+            self.mb.tag_set_data(self.pressure_tag, self.volumes, x_minus)
+            self.tag_verts_pressure()
+            all_faces = self.dirichlet_faces.union(
+                self.neumann_faces.union(self.intern_faces)
+            )
         
+            for face in self.dirichlet_faces.union(self.neumann_faces):
+                alpha = self.compute_slip_fact(face)
+                print(alpha) if 0 > alpha > 1 else None
+                try:
+                    #import pdb; pdb.set_trace()
+                    row = self.mb.tag_get_data(
+                        self.global_id_tag, self.mtu.get_bridge_adjacencies(face, 2, 3)
+                    )
+                    q[row] -= (1-alpha)*A_plus[row,row]
+                    A_plus[row, row] *= alpha
+                except ValueError:
+                    print('AQUI')
+
+                    # self.aux_q[id_volume].append({node: -RHS for node in [I, J, K]})
+                    pass
+            for face in self.intern_faces:
+                alpha = self.compute_slip_fact(face)
+                print(alpha) if 0 > alpha > 1 else None
+                try:
+                    row, col = self.mb.tag_get_data(
+                        self.global_id_tag, self.mtu.get_bridge_adjacencies(face, 2, 3)
+                    )
+                    A_plus[row, col] *= alpha
+                except ValueError:
+                    # self.aux_q[id_volume].append({node: -RHS for node in [I, J, K]})
+                    pass
+            
+            if number == 20:
+                break
+            
+            print(np.sqrt(np.dot(residual,residual)))
         return x_minus, residual, number
 
 
