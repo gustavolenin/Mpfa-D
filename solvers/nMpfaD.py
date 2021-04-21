@@ -479,13 +479,16 @@ class MpfaD3D:
 
             # RHS = D_JK * (g_I - g_J) - K_eq * g_J + D_JI * (g_J - g_K)
             RHS = D_JK * (g_I - g_J)  + D_JI * (g_J - g_K)
+            RHS_I = D_JK *g_I 
+            RHS_J = -D_JK *g_J + D_JI *g_J
+            RHS_K = -D_JI *g_K
             rhs = - K_eq * g_J 
             LHS = K_eq
             all_LHS.append(LHS)
 
             self.Q[id_volume] += -RHS
             self.alphaQ[id_volume] += - rhs
-            self.aux_q[id_volume].append({node: -RHS for node in [I, J, K]})
+            self.aux_q[id_volume].append({node: -rhs for rhs,node in zip([RHS_I,RHS_J,RHS_K],[I, J, K])})
             # self.Q[id_volume, 0] += - RHS
             # self.mb.tag_set_data(self.flux_info_tag, face,
             #                      [D_JK, D_JI, K_eq, I, J, K, face_area])
@@ -644,14 +647,21 @@ class MpfaD3D:
         all_faces = self.dirichlet_faces.union(
             self.neumann_faces.union(self.intern_faces)
         )
+        
         for face in self.dirichlet_faces.union(self.neumann_faces):
             alpha = self.compute_slip_fact(face)
+            boundary_vol = self.mb.tag_get_data(self.global_id_tag,self.mtu.get_bridge_adjacencies(face,2,3))[0][0]
+            aux_q = self.aux_q[boundary_vol]
+            q_boundary,q_inner = aux_q[0],aux_q[1:]
+            q_i,q_j,q_k = q_boundary.values()
+            I,J,K = q_boundary.keys()
+            q_inner = sum([[self.value_parser(value,alpha,_==J) for _,value in item.items()][0] for item in q_inner])
             try:
                 #import pdb; pdb.set_trace()
                 row = self.mb.tag_get_data(
                     self.global_id_tag, self.mtu.get_bridge_adjacencies(face, 2, 3)
                 )
-                q[row] -= (1-alpha)*A_plus[row,row]
+                q[row] -= q_inner + q_i + q_k + alpha*q_j
                 A_plus[row, row] *= alpha
             except ValueError:
                 print('AQUI')
@@ -688,16 +698,19 @@ class MpfaD3D:
             all_faces = self.dirichlet_faces.union(
                 self.neumann_faces.union(self.intern_faces)
             )
-        
             for face in self.dirichlet_faces.union(self.neumann_faces):
                 alpha = self.compute_slip_fact(face)
-                print(alpha) if 0 > alpha > 1 else None
+                boundary_vol = self.mb.tag_get_data(self.global_id_tag,self.mtu.get_bridge_adjacencies(face,2,3))[0][0]
+                aux_q = self.aux_q[boundary_vol]
+                q_boundary,q_inner = aux_q[0],aux_q[1:]
+                q_i,q_j,q_k = q_boundary.values()
+                q_inner = sum([[self.value_parser(value,alpha,_==J) for _,value in item.items()][0] for item in q_inner])
                 try:
                     #import pdb; pdb.set_trace()
                     row = self.mb.tag_get_data(
                         self.global_id_tag, self.mtu.get_bridge_adjacencies(face, 2, 3)
                     )
-                    q[row] -= (1-alpha)*A_plus[row,row]
+                    q[row] -= q_inner + q_i + q_k + alpha*q_j
                     A_plus[row, row] *= alpha
                 except ValueError:
                     print('AQUI')
@@ -706,7 +719,6 @@ class MpfaD3D:
                     pass
             for face in self.intern_faces:
                 alpha = self.compute_slip_fact(face)
-                print(alpha) if 0 > alpha > 1 else None
                 try:
                     row, col = self.mb.tag_get_data(
                         self.global_id_tag, self.mtu.get_bridge_adjacencies(face, 2, 3)
@@ -716,7 +728,7 @@ class MpfaD3D:
                     # self.aux_q[id_volume].append({node: -RHS for node in [I, J, K]})
                     pass
             
-            if number == 20:
+            if number == 10:
                 break
             
             print(np.sqrt(np.dot(residual,residual)))
@@ -729,10 +741,14 @@ class MpfaD3D:
         fig = hist.get_figure()
         fig.savefig(figname)
         plt.close()
+    
+    def value_parser(self,value,alpha,vertex):
+        try:
+            v = value[0]
+        except Exception:
+            v = value
         
-
-
-
+        return alpha*value
 # sol = []
 # for face in all_faces:
 #     sl = self.compute_slip_fact(face)
