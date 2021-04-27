@@ -70,7 +70,7 @@ class ObliqueDrain:
         return results
 
     def _obliqueDrain(self, x, y):
-        return x + 0.2 * y
+        return -x - 0.2 * y
 
     def runCase(self, interpolation_method, log_name):
         for node in self.mesh.get_boundary_nodes():

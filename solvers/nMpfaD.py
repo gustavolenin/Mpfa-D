@@ -138,8 +138,6 @@ class MpfaD3D:
             self.Q[id_right] += -RHS * pressure
             self.aux_q[int(id_left)].append({node: RHS * pressure})
             self.aux_q[int(id_right)].append({node: -RHS * pressure})
-            # self.Q[id_left[0], 0] += RHS * pressure
-            # self.Q[id_right[0], 0] += - RHS * pressure
 
         if node in self.intern_nodes:
             for volume, weight in self.nodes_ws[node].items():
@@ -154,8 +152,6 @@ class MpfaD3D:
             self.Q[id_left] += RHS * neu_term
             self.aux_q[int(id_left)].append({node: RHS * neu_term})
             self.aux_q[int(id_right)].append({node: -RHS * neu_term})
-            # self.Q[id_right, 0] += - RHS * neu_term
-            # self.Q[id_left, 0] += RHS * neu_term
 
             for volume, weight_N in self.nodes_ws[node].items():
                 self.ids.append([id_left, id_right])
@@ -419,7 +415,7 @@ class MpfaD3D:
             face_area = geo._area_vector(node_crds, norma=True)
             RHS = face_flow * face_area
             self.Q[id_volume] += -RHS
-            self.aux_q[id_volume].append({node: RHS for node in face_nodes})
+            # self.aux_q[id_volume].append({node: RHS for node in face_nodes})
             # self.Q[id_volume, 0] += - RHS
 
         id_volumes = []
@@ -477,8 +473,8 @@ class MpfaD3D:
             )
             K_eq = (1 / h_L) * (face_area * K_n_L)
 
-            # RHS = D_JK * (g_I - g_J) - K_eq * g_J + D_JI * (g_J - g_K)
-            RHS = D_JK * (g_I - g_J)  + D_JI * (g_J - g_K)
+            RHS = D_JK * (g_I - g_J) - K_eq * g_J + D_JI * (g_J - g_K)
+            # RHS = D_JK * (g_I - g_J) + D_JI * (g_J - g_K)
             RHS_I = D_JK *g_I 
             RHS_J = -D_JK *g_J + D_JI *g_J
             RHS_K = -D_JI *g_K
@@ -488,10 +484,9 @@ class MpfaD3D:
 
             self.Q[id_volume] += -RHS
             self.alphaQ[id_volume] += - rhs
-            self.aux_q[id_volume].append({node: -rhs for rhs,node in zip([RHS_I,RHS_J,RHS_K],[I, J, K])})
-            # self.Q[id_volume, 0] += - RHS
-            # self.mb.tag_set_data(self.flux_info_tag, face,
-            #                      [D_JK, D_JI, K_eq, I, J, K, face_area])
+            self.aux_q[id_volume].append(
+                {node: -rhs for rhs, node in zip([RHS_I, RHS_J, RHS_K], [I, J, K])}
+            )
 
         all_cols = []
         all_rows = []
@@ -640,33 +635,34 @@ class MpfaD3D:
         self.sum_into_diagonal(A_plus)
         A_minus = A - A_plus
         x_minus = self.solve_original_problem(A_minus, q)
-        residual = q -  (A_minus + A_plus)*x_minus# Resíduo - Equação 70 (Kuzmin)
+        residual = q - (A_minus + A_plus) * x_minus # Resíduo - Equação 70 (Kuzmin)
         number = 0
         self.mb.tag_set_data(self.pressure_tag, self.volumes, x_minus)
         self.tag_verts_pressure()
-        all_faces = self.dirichlet_faces.union(
-            self.neumann_faces.union(self.intern_faces)
-        )
-        
-        for face in self.dirichlet_faces.union(self.neumann_faces):
+        # all_faces = self.dirichlet_faces.union(self.neumann_faces.union(self.intern_faces))
+        for face in self.dirichlet_faces:
             alpha = self.compute_slip_fact(face)
-            boundary_vol = self.mb.tag_get_data(self.global_id_tag,self.mtu.get_bridge_adjacencies(face,2,3))[0][0]
+            boundary_vol = self.mb.tag_get_data(
+                self.global_id_tag, self.mtu.get_bridge_adjacencies(face, 2, 3)
+            )[0][0]
             aux_q = self.aux_q[boundary_vol]
-            q_boundary,q_inner = aux_q[0],aux_q[1:]
-            q_i,q_j,q_k = q_boundary.values()
-            I,J,K = q_boundary.keys()
-            q_inner = sum([[self.value_parser(value,alpha,_==J) for _,value in item.items()][0] for item in q_inner])
+            q_boundary, q_inner = aux_q[0], aux_q[1:]
+            q_i, q_j, q_k = q_boundary.values()
+            I, J, K = q_boundary.keys()
+            q_inner = sum(
+                [[self.value_parser(value, alpha, _ == J) for _, value in item.items()][0] for item in q_inner]
+            )
             try:
                 #import pdb; pdb.set_trace()
                 row = self.mb.tag_get_data(
                     self.global_id_tag, self.mtu.get_bridge_adjacencies(face, 2, 3)
                 )
-                q[row] -= q_inner + q_i + q_k + alpha*q_j
+                q[row] -= alpha * q_j
                 A_plus[row, row] *= alpha
             except ValueError:
                 print('AQUI')
 
-                # self.aux_q[id_volume].append({node: -RHS for node in [I, J, K]})
+                self.aux_q[id_volume].append({node: -RHS for node in [I, J, K]})
                 pass
         for face in self.intern_faces:
             alpha = self.compute_slip_fact(face)
@@ -675,16 +671,30 @@ class MpfaD3D:
                     self.global_id_tag, self.mtu.get_bridge_adjacencies(face, 2, 3)
                 )
                 A_plus[row, col] *= alpha
+                dirichlet_nodes = list(
+                    set(self.mtu.get_bridge_adjacencies(face, 2, 0)) \
+                        .intersection(self.dirichlet_nodes)
+                )
+                if dirichlet_nodes:
+                    for vert in dirichlet_nodes:
+                        try:
+                            vert_q_row = self.aux_q[row].get(vert)
+                            q[row] -= alpha * vert_q_row
+                        except Exception:
+                            pass
+                        try:
+                            vert_q_col = self.aux_q[col].get(vert)
+                            q[col] -= alpha * vert_q_col
+                        except Exception:
+                            pass
+
             except ValueError:
-                # self.aux_q[id_volume].append({node: -RHS for node in [I, J, K]})
                 pass
 
-        while np.max(np.abs(residual)) > 1E-3:    
-
-
+        while np.max(np.abs(residual)) > 1E-3:
             dx_minus = self.solve_original_problem(A_minus, residual)
             x_minus += dx_minus
-            residual = q -  (A_minus + A_plus)*x_minus# Resíduo - Equação 70 (Kuzmin)
+            residual = q - (A_minus + A_plus) * x_minus# Resíduo - Equação 70 (Kuzmin)
             number += 1
             rows, cols = self.get_global_rows()
             q = np.asarray(self.Q)
@@ -698,24 +708,27 @@ class MpfaD3D:
             all_faces = self.dirichlet_faces.union(
                 self.neumann_faces.union(self.intern_faces)
             )
-            for face in self.dirichlet_faces.union(self.neumann_faces):
+            for face in self.dirichlet_faces:
                 alpha = self.compute_slip_fact(face)
-                boundary_vol = self.mb.tag_get_data(self.global_id_tag,self.mtu.get_bridge_adjacencies(face,2,3))[0][0]
+                boundary_vol = self.mb.tag_get_data(
+                    self.global_id_tag, self.mtu.get_bridge_adjacencies(face, 2, 3)
+                )[0][0]
                 aux_q = self.aux_q[boundary_vol]
-                q_boundary,q_inner = aux_q[0],aux_q[1:]
-                q_i,q_j,q_k = q_boundary.values()
-                q_inner = sum([[self.value_parser(value,alpha,_==J) for _,value in item.items()][0] for item in q_inner])
+                q_boundary, q_inner = aux_q[0],aux_q[1:]
+                q_i, q_j, q_k = q_boundary.values()
+                q_inner = sum(
+                    [[self.value_parser(value, alpha, _ == J) for _, value in item.items()][0] for item in q_inner]
+                )
                 try:
-                    #import pdb; pdb.set_trace()
                     row = self.mb.tag_get_data(
                         self.global_id_tag, self.mtu.get_bridge_adjacencies(face, 2, 3)
                     )
-                    q[row] -= q_inner + q_i + q_k + alpha*q_j
+                    q[row] -= alpha * q_j
                     A_plus[row, row] *= alpha
                 except ValueError:
                     print('AQUI')
 
-                    # self.aux_q[id_volume].append({node: -RHS for node in [I, J, K]})
+                    self.aux_q[id_volume].append({node: -RHS for node in [I, J, K]})
                     pass
             for face in self.intern_faces:
                 alpha = self.compute_slip_fact(face)
@@ -724,14 +737,29 @@ class MpfaD3D:
                         self.global_id_tag, self.mtu.get_bridge_adjacencies(face, 2, 3)
                     )
                     A_plus[row, col] *= alpha
+                    dirichlet_nodes = list(
+                        set(self.mtu.get_bridge_adjacencies(face, 2, 0)) \
+                            .intersection(self.dirichlet_nodes)
+                    )
+                    if dirichlet_nodes:
+                        for vert in dirichlet_nodes:
+                            try:
+                                vert_q_row = self.aux_q[row].get(vert)
+                                q[row] -= alpha * vert_q_row
+                            except Exception:
+                                pass
+                            try:
+                                vert_q_col = self.aux_q[col].get(vert)
+                                q[col] -= alpha * vert_q_col
+                            except Exception:
+                                pass
                 except ValueError:
-                    # self.aux_q[id_volume].append({node: -RHS for node in [I, J, K]})
+                    self.aux_q[id_volume].append({node: -RHS for node in [I, J, K]})
                     pass
-            
             if number == 10:
                 break
             
-            print(np.sqrt(np.dot(residual,residual)))
+            print(np.sqrt(np.dot(residual, residual)))
         return x_minus, residual, number
 
 

@@ -419,14 +419,14 @@ class MpfaD3D:
             )
         self.mb.tag_set_data(self.pressure_tag, self.volumes, self.x)
 
-        coords_x = [
-            coords[0] for coords in self.mb.get_coords(
-                self.volumes
-            ).reshape([len(self.volumes), 3])
-        ]
-        with open('results.csv', 'w') as results:
-            for coord, x in zip(coords_x, self.x):
-                results.write(f"{str(coord)};{str(x)}\n")
+        # coords_x = [
+        #     coords[0] for coords in self.mb.get_coords(
+        #         self.volumes
+        #     ).reshape([len(self.volumes), 3])
+        # ]
+        # with open('results.csv', 'w') as results:
+        #     for coord, x in zip(coords_x, self.x):
+        #         results.write(f"{str(coord)};{str(x)}\n")
 
 
 # """This is the begin."""
