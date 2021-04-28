@@ -136,8 +136,8 @@ class MpfaD3D:
             pressure = self.get_boundary_node_pressure(node)
             self.Q[id_left] += RHS * pressure
             self.Q[id_right] += -RHS * pressure
-            self.aux_q[int(id_left)].append({node: RHS * pressure})
-            self.aux_q[int(id_right)].append({node: -RHS * pressure})
+            self.aux_q[int(id_left),int(id_right)].append({node: RHS * pressure})
+            self.aux_q[int(id_right),int(id_left)].append({node: -RHS * pressure})
 
         if node in self.intern_nodes:
             for volume, weight in self.nodes_ws[node].items():
@@ -150,8 +150,8 @@ class MpfaD3D:
             neu_term = self.nodes_nts[node]
             self.Q[id_right] += -RHS * neu_term
             self.Q[id_left] += RHS * neu_term
-            self.aux_q[int(id_left)].append({node: RHS * neu_term})
-            self.aux_q[int(id_right)].append({node: -RHS * neu_term})
+            self.aux_q[int(id_left),int(id_right)].append({node: RHS * neu_term})
+            self.aux_q[int(id_right),int(id_left)].append({node: -RHS * neu_term})
 
             for volume, weight_N in self.nodes_ws[node].items():
                 self.ids.append([id_left, id_right])
@@ -657,7 +657,8 @@ class MpfaD3D:
                 row = self.mb.tag_get_data(
                     self.global_id_tag, self.mtu.get_bridge_adjacencies(face, 2, 3)
                 )
-                q[row] -= alpha * q_j
+                # q[row] -= (-1+alpha) * q_j
+                q[row] -= (-1+alpha) * (q_i+ q_j+ q_k+q_inner)
                 A_plus[row, row] *= alpha
             except ValueError:
                 print('AQUI')
@@ -678,13 +679,13 @@ class MpfaD3D:
                 if dirichlet_nodes:
                     for vert in dirichlet_nodes:
                         try:
-                            vert_q_row = self.aux_q[row].get(vert)
-                            q[row] -= alpha * vert_q_row
+                            vert_q_row = self.aux_q[row,col].get(vert)
+                            q[row] -= (-1+alpha) * vert_q_row
                         except Exception:
                             pass
                         try:
-                            vert_q_col = self.aux_q[col].get(vert)
-                            q[col] -= alpha * vert_q_col
+                            vert_q_col = self.aux_q[col,col].get(vert)
+                            q[col] -= (-1+alpha) * vert_q_col
                         except Exception:
                             pass
 
@@ -710,6 +711,8 @@ class MpfaD3D:
             )
             for face in self.dirichlet_faces:
                 alpha = self.compute_slip_fact(face)
+                if 0 < alpha > 1:
+                    print(alpha)
                 boundary_vol = self.mb.tag_get_data(
                     self.global_id_tag, self.mtu.get_bridge_adjacencies(face, 2, 3)
                 )[0][0]
@@ -723,7 +726,8 @@ class MpfaD3D:
                     row = self.mb.tag_get_data(
                         self.global_id_tag, self.mtu.get_bridge_adjacencies(face, 2, 3)
                     )
-                    q[row] -= alpha * q_j
+                    # q[row] -= (-1+alpha) * q_j
+                    q[row] -= (-1+alpha) * (q_i+ q_j+ q_k+q_inner)
                     A_plus[row, row] *= alpha
                 except ValueError:
                     print('AQUI')
@@ -732,6 +736,8 @@ class MpfaD3D:
                     pass
             for face in self.intern_faces:
                 alpha = self.compute_slip_fact(face)
+                if 0 < alpha > 1:
+                    print(alpha)
                 try:
                     row, col = self.mb.tag_get_data(
                         self.global_id_tag, self.mtu.get_bridge_adjacencies(face, 2, 3)
@@ -744,13 +750,13 @@ class MpfaD3D:
                     if dirichlet_nodes:
                         for vert in dirichlet_nodes:
                             try:
-                                vert_q_row = self.aux_q[row].get(vert)
-                                q[row] -= alpha * vert_q_row
+                                vert_q_row = self.aux_q[row,col].get(vert)
+                                q[row] -= (-1+alpha) * vert_q_row
                             except Exception:
                                 pass
                             try:
-                                vert_q_col = self.aux_q[col].get(vert)
-                                q[col] -= alpha * vert_q_col
+                                vert_q_col = self.aux_q[col,col].get(vert)
+                                q[col] -= (-1+alpha) * vert_q_col
                             except Exception:
                                 pass
                 except ValueError:
