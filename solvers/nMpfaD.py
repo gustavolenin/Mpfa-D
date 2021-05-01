@@ -642,8 +642,9 @@ class MpfaD3D:
         # all_faces = self.dirichlet_faces.union(self.neumann_faces.union(self.intern_faces))
         for face in self.dirichlet_faces:
             alpha = self.compute_slip_fact(face)
-            if 0 < alpha > 1:
-                print(alpha)
+            alpha = 1
+            # if 0 <= alpha <= 1:
+            #     print(alpha)
             boundary_vol = self.mb.tag_get_data(
                 self.global_id_tag, self.mtu.get_bridge_adjacencies(face, 2, 3)
             )[0][0]
@@ -660,7 +661,10 @@ class MpfaD3D:
                     self.global_id_tag, self.mtu.get_bridge_adjacencies(face, 2, 3)
                 )
                 q[row] -= (-1+alpha) * q_j
+                # print('row: ',row)
+                # print('A_plus antes: ',A_plus[row, row])
                 A_plus[row, row] *= alpha
+                # print('A_plus depois: ',A_plus[row, row])
             except ValueError:
                 print('AQUI')
 
@@ -668,8 +672,9 @@ class MpfaD3D:
                 pass
         for face in self.intern_faces:
             alpha = self.compute_slip_fact(face)
-            if 0 < alpha > 1:
-                print(alpha)
+            alpha = 1
+            # if 0 <= alpha <= 1:
+            #     print(alpha)
             try:
                 row, col = self.mb.tag_get_data(
                     self.global_id_tag, self.mtu.get_bridge_adjacencies(face, 2, 3)
@@ -714,8 +719,9 @@ class MpfaD3D:
             )
             for face in self.dirichlet_faces:
                 alpha = self.compute_slip_fact(face)
-                if 0 < alpha > 1:
-                    print(alpha)
+                alpha = 1
+                # if 0 < alpha > 1:
+                #     print(alpha)
                 boundary_vol = self.mb.tag_get_data(
                     self.global_id_tag, self.mtu.get_bridge_adjacencies(face, 2, 3)
                 )[0][0]
@@ -730,7 +736,10 @@ class MpfaD3D:
                         self.global_id_tag, self.mtu.get_bridge_adjacencies(face, 2, 3)
                     )
                     q[row] -= (-1+alpha) * q_j
+                    # print('row: ',row)
+                    # print('A_plus antes: ',A_plus[row, row])
                     A_plus[row, row] *= alpha
+                    # print('A_plus depois: ',A_plus[row, row])
                 except ValueError:
                     print('AQUI')
 
@@ -738,8 +747,9 @@ class MpfaD3D:
                     pass
             for face in self.intern_faces:
                 alpha = self.compute_slip_fact(face)
-                if 0 < alpha > 1:
-                    print(alpha)
+                alpha = 1
+                # if 0 < alpha > 1:
+                #     print(alpha)
                 try:
                     row, col = self.mb.tag_get_data(
                         self.global_id_tag, self.mtu.get_bridge_adjacencies(face, 2, 3)
@@ -749,6 +759,9 @@ class MpfaD3D:
                         set(self.mtu.get_bridge_adjacencies(face, 2, 0)) \
                             .intersection(self.dirichlet_nodes)
                     )
+                    # import pdb; pdb.set_trace()
+                    # _q = q[row]
+                    # print('SOMA : ',(A_plus[row,:] + A_minus[row,:]).sum())
                     if dirichlet_nodes:
                         for vert in dirichlet_nodes:
                             try:
