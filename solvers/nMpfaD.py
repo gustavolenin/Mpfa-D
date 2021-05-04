@@ -642,7 +642,6 @@ class MpfaD3D:
         # all_faces = self.dirichlet_faces.union(self.neumann_faces.union(self.intern_faces))
         for face in self.dirichlet_faces:
             alpha = self.compute_slip_fact(face)
-            alpha = 1
             # if 0 <= alpha <= 1:
             #     print(alpha)
             boundary_vol = self.mb.tag_get_data(
@@ -656,7 +655,6 @@ class MpfaD3D:
                 [[self.value_parser(value, alpha, _ == J) for _, value in item.items()][0] for item in q_inner]
             )
             try:
-                #import pdb; pdb.set_trace()
                 row = self.mb.tag_get_data(
                     self.global_id_tag, self.mtu.get_bridge_adjacencies(face, 2, 3)
                 )
@@ -672,7 +670,6 @@ class MpfaD3D:
                 pass
         for face in self.intern_faces:
             alpha = self.compute_slip_fact(face)
-            alpha = 1
             # if 0 <= alpha <= 1:
             #     print(alpha)
             try:
@@ -699,9 +696,8 @@ class MpfaD3D:
 
             except ValueError:
                 pass
-
         while np.max(np.abs(residual)) > 1E-3:
-            dx_minus = self.solve_original_problem(A_minus, residual)
+            dx_minus = self.solve_original_problem(A_minus + A_plus, residual)
             x_minus += dx_minus
             residual = q - (A_minus + A_plus) * x_minus# Resíduo - Equação 70 (Kuzmin)
             number += 1
@@ -719,7 +715,6 @@ class MpfaD3D:
             )
             for face in self.dirichlet_faces:
                 alpha = self.compute_slip_fact(face)
-                alpha = 1
                 # if 0 < alpha > 1:
                 #     print(alpha)
                 boundary_vol = self.mb.tag_get_data(
@@ -747,7 +742,6 @@ class MpfaD3D:
                     pass
             for face in self.intern_faces:
                 alpha = self.compute_slip_fact(face)
-                alpha = 1
                 # if 0 < alpha > 1:
                 #     print(alpha)
                 try:
