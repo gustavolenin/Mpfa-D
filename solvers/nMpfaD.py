@@ -778,7 +778,8 @@ class MpfaD3D:
             out_residual = len(residual[np.where(residual > 1)])
             print('Quantidade de termos em que o resíduo ultrapassa 1: ',out_residual)
 
-        return x_minus, residual, number
+        #import pdb; pdb.set_trace()
+        self.mb.tag_set_data(self.pressure_tag,self.volumes,x_minus)
 
 
     def savefig(self, df, column_name, figname):

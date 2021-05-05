@@ -1,7 +1,7 @@
 import numpy as np
 from math import pi, sqrt
 import solvers.helpers.geometric as geo
-from solvers.MpfaD import MpfaD3D
+from solvers.nMpfaD import MpfaD3D
 from preprocessor.mesh_preprocessor import MeshManager
 from pymoab import types
 
@@ -306,6 +306,7 @@ class TestCasesMGE:
             )
 
         self.mpfad.run_solver(self.im.interpolate)
+        self.mpfad.defect_correction()
         err = []
         u = []
         for volume in volumes:
@@ -329,11 +330,9 @@ class TestCasesMGE:
         results = self.norms_calculator(err, vols, u)
         non_zero_mat = self.mpfad.T.NumGlobalNonzeros()
         norm_vel, norm_grad = self.get_velocity(func[test_case])
-        path = (
-            f"paper_mpfad_tests/mge_paper_cases/{func[test_case].__name__}/"
-            + log_name
-            + "_log"
-        )
+        import uuid 
+        _id = str(uuid.uuid1()) 
+        path = (_id + log_name + "_log")
         with open(path, "w") as f:
             f.write("TEST CASE 2\n\nUnknowns:\t %.6f\n" % (len(volumes)))
             f.write("Non-zero matrix:\t %.6f\n" % (non_zero_mat))
@@ -348,9 +347,9 @@ class TestCasesMGE:
             f.write("velocity norm: \t %.6g\n" % norm_vel)
             f.write("gradient norm: \t %.6g\n" % norm_grad)
         print("max error: ", max(err), "l-2 relative norm: ", results[2])
-        path = (
-            f"paper_mpfad_tests/mge_paper_cases/{func[test_case].__name__}/"
-            + log_name
-        )
+        # path = (
+        #     f"paper_mpfad_tests/mge_paper_cases/{func[test_case].__name__}/"
+        #     + log_name
+        # )
         self.mpfad.record_data(path + ".vtk")
         print("END OF " + log_name + "!!!\n")

@@ -15,7 +15,8 @@ from single_phase_cases.flow_channel import FlowChannel
 
 
 interpolation_methods = [LPEW3]
-benchmark_fvca_cases = [2, 3, 4, 5, 6, 7, 8]
+# benchmark_fvca_cases = [2, 3, 4, 5, 6, 7, 8]
+benchmark_fvca_cases = [3,4,5]
 fvcaMeshesB = [
     BenchMeshGenerator(str(case)).generate_mesh()
     for case in benchmark_fvca_cases
@@ -38,19 +39,19 @@ if MGE:
     for mesh in fvcaMeshesB:
         for im in interpolation_methods:
             TestCasesMGE(mesh, im).run_case("mge_test_case_1_", "mge_test_case_1")
-            TestCasesMGE(mesh, im).run_case("mge_test_case_2_", "mge_test_case_2")
-            TestCasesMGE(mesh, im).run_case("mge_test_case_3_", "mge_test_case_3")
-            TestCasesMGE(mesh, im).run_case("mge_test_case_5_", "mge_test_case_5")
-NOOLINEAR = False
+            # TestCasesMGE(mesh, im).run_case("mge_test_case_2_", "mge_test_case_2")
+            # TestCasesMGE(mesh, im).run_case("mge_test_case_3_", "mge_test_case_3")
+            # TestCasesMGE(mesh, im).run_case("mge_test_case_5_", "mge_test_case_5")
+NONLINEAR = True
 if NONLINEAR:
-    cases_dmp = ["8x8x8"]
+    cases_dmp = ["16x16x16"]
     for case in cases_dmp:
         for im in interpolation_methods:
             log_name = "linear_monotonicity_test_" + im.__name__ + "_" + case
             mesh_dmp = "meshes/monotone_" + case + ".msh"
             DiscreteMaxPrinciple(mesh_dmp, im).run_dmp(log_name)
-            DiscreteMaxPrinciple(mesh_dmp, im).run_lai_sheng_dmp_test()
-OBLIQUEDRAIN = True
+            # DiscreteMaxPrinciple(mesh_dmp, im).run_lai_sheng_dmp_test()
+OBLIQUEDRAIN = False
 if OBLIQUEDRAIN:
     meshes = {
         "meshes/oblique-drain.msh": "distort",

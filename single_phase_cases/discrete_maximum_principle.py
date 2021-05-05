@@ -68,6 +68,7 @@ class DiscreteMaxPrinciple:
         # x = self.mpfad.x
         self.mpfad = MpfaD3D(self.mesh)
         self.mpfad.run_solver(self.im.interpolate)
+        self.mpfad.defect_correction()
         max_p = max(self.mpfad.x)
         min_p = min(self.mpfad.x)
         volumes = self.mesh.all_volumes
