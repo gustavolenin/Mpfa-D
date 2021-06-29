@@ -332,8 +332,8 @@ class TestCasesMGE:
         norm_vel, norm_grad = self.get_velocity(func[test_case])
         import uuid 
         _id = str(uuid.uuid1()) 
-        path = (_id + log_name + "_log")
-        with open(path, "w") as f:
+        path = ('results/' + log_name)
+        with open(path + "_log", "w") as f:
             f.write("TEST CASE 2\n\nUnknowns:\t %.6f\n" % (len(volumes)))
             f.write("Non-zero matrix:\t %.6f\n" % (non_zero_mat))
             f.write("Umin:\t %.6f\n" % (u_min))

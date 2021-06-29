@@ -332,7 +332,7 @@ class MpfaD3D:
                 rts = 2 * self.mis[volume] * (min_v - _u)
                 _s = max(lp, rts)
                 slip_factor = (_s + 1e-20) / (lp + 1e-20)
-                if abs(slip_factor) < 1e-15:
+                if abs(slip_factor) < 1e-10:
                     slip_factor = 0
                 if slip_factor < 0 or slip_factor > 1:
                     print('else dentro do else')
@@ -696,7 +696,8 @@ class MpfaD3D:
 
             except ValueError:
                 pass
-        while np.max(np.abs(residual)) > 1E-3:
+        its = 0
+        while np.max(np.abs(residual)) > 1E-6:
             dx_minus = self.solve_original_problem(A_minus + A_plus, residual)
             x_minus += dx_minus
             residual = q - (A_minus + A_plus) * x_minus# Resíduo - Equação 70 (Kuzmin)
@@ -773,8 +774,8 @@ class MpfaD3D:
                     pass
             if number == 25:
                 break
-            
-            print('Resíduo: ',np.sqrt(np.dot(residual, residual)))
+            self.its = number
+            print('Resíduo: ', np.sqrt(np.dot(residual, residual)))
             out_residual = len(residual[np.where(residual > 1)])
             print('Quantidade de termos em que o resíduo ultrapassa 1: ',out_residual)
 

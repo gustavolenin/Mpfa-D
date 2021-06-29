@@ -1,7 +1,7 @@
 import numpy as np
 from math import pi
 import solvers.helpers.geometric as geo
-from solvers.MpfaD import MpfaD3D
+from solvers.nMpfaD import MpfaD3D
 from preprocessor.mesh_preprocessor import MeshManager
 from pymoab import types
 
@@ -310,6 +310,8 @@ class BenchmarkFVCA:
                 self.mesh.source_tag, volume, source_term * tetra_vol
             )
         self.mpfad.run_solver(self.im.interpolate)
+        self.mpfad.defect_correction()
+            # run_solver(self.im.interpolate)
         u_err = []
         u = []
         for volume in volumes:
@@ -317,9 +319,7 @@ class BenchmarkFVCA:
                 self.mesh.volume_centre_tag, volume
             )[0]
             analytical_solution = self._benchmark_1(x, y, z)[1]
-            calculated_solution = self.mpfad.mb.tag_get_data(
-                self.mpfad.pressure_tag, volume
-            )[0][0]
+            calculated_solution = self.mpfad.mb.tag_get_data(self.mpfad.pressure_tag, volume)[0][0]
             u_err.append(
                 np.absolute((analytical_solution - calculated_solution))
             )
@@ -333,12 +333,8 @@ class BenchmarkFVCA:
         results = self.norms_calculator(u_err, vols, u)
         non_zero_mat = self.mpfad.T.NumGlobalNonzeros()
         norm_vel, norm_grad = self.get_velocity(self._benchmark_1)
-        path = (
-            "paper_mpfad_tests/benchmark_fvca_cases/benchmark_case_1/"
-            + log_name
-            + "_log"
-        )
-        import pdb; pdb.set_trace()
+        path = "results/" + log_name + "_log"
+        its = self.mpfad.its
         with open(path, "w") as f:
             f.write("TEST CASE 1\n\nUnknowns:\t %.0f\n" % (len(volumes)))
             # f.write('Interpolation Method: {}'.format(self.im.__name__))
@@ -353,9 +349,10 @@ class BenchmarkFVCA:
             f.write("minimum error:\t %.6g\n" % (results[5]))
             f.write("velocity norm: \t %.6g\n" % norm_vel)
             f.write("gradient norm: \t %.6g\n" % norm_grad)
+            f.write("Num iterations: \t %.6g\n" % its)
 
         print("max error: ", max(u_err), "l-2 relative norm: ", results[2])
-        path = "paper_mpfad_tests/benchmark_fvca_cases/benchmark_case_1/"
+        path = "results/"
         self.mpfad.record_data(path + log_name + ".vtk")
         print("END OF " + log_name + "!!!\n")
 
@@ -388,6 +385,7 @@ class BenchmarkFVCA:
                 self.mesh.source_tag, volume, source_term * tetra_vol
             )
         self.mpfad.run_solver(self.im.interpolate)
+        self.mpfad.defect_correction()
         err = []
         u = []
         for volume in volumes:
@@ -411,8 +409,9 @@ class BenchmarkFVCA:
         results = self.norms_calculator(err, vols, u)
         non_zero_mat = self.mpfad.T.NumGlobalNonzeros()
         norm_vel, norm_grad = self.get_velocity(self._benchmark_2)
+        its = self.mpfad.its
         path = (
-            "paper_mpfad_tests/benchmark_fvca_cases/benchmark_case_2/"
+            "results/"
             + log_name
             + "_log"
         )
@@ -429,8 +428,9 @@ class BenchmarkFVCA:
             f.write("minimum error:\t %.6f\n" % (results[5]))
             f.write("velocity norm: \t %.6g\n" % norm_vel)
             f.write("gradient norm: \t %.6g\n" % norm_grad)
+            f.write("Num iterations: \t %.6g\n" % its)
         print("max error: ", max(err), "l-2 relative norm: ", results[2])
-        path = "paper_mpfad_tests/benchmark_fvca_cases/benchmark_case_2/"
+        path = "results/"
         self.mpfad.record_data(path + log_name + ".vtk")
         print("END OF " + log_name + "!!!\n")
 
@@ -487,7 +487,7 @@ class BenchmarkFVCA:
         non_zero_mat = self.mpfad.T.NumGlobalNonzeros()
         norm_vel, norm_grad = self.get_velocity(self._benchmark_3)
         path = (
-            "paper_mpfad_tests/benchmark_fvca_cases/benchmark_case_3/"
+            "results/"
             + log_name
             + "_log"
         )
@@ -505,7 +505,7 @@ class BenchmarkFVCA:
             f.write("velocity norm: \t %.6g\n" % norm_vel)
             f.write("gradient norm: \t %.6g\n" % norm_grad)
         print("max error: ", max(err), "l-2 relative norm: ", results[2])
-        path = "paper_mpfad_tests/benchmark_fvca_cases/benchmark_case_3/"
+        path = "results/"
         self.mpfad.record_data(path + log_name + ".vtk")
         print("END OF " + log_name + "!!!\n")
 
@@ -561,7 +561,7 @@ class BenchmarkFVCA:
         results = self.norms_calculator(err, vols, u)
         # non_zero_mat = self.mpfad.T.NumGlobalNonzeros()
         path = (
-            "results/benchmark_fvca_cases/benchmark_case_5/"
+            "results/"
             + log_name
             + "_log"
         )
@@ -588,6 +588,6 @@ class BenchmarkFVCA:
             "u_max: ",
             u_max,
         )
-        path = "paper_mpfad_tests/benchmark_fvca_cases/benchmark_case_2/"
+        path = "results/"
         self.mpfad.record_data(path + log_name + ".vtk")
         print("END OF " + log_name + "!!!\n")

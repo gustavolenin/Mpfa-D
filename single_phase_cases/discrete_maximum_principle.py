@@ -94,8 +94,8 @@ class DiscreteMaxPrinciple:
         print(
             max_p, min_p, sum(oversh) ** (1 / 2.0), sum(undersh) ** (1 / 2.0)
         )
-
-        path = "paper_mpfad_tests/dmp_tests/" + log_name
+        its = self.mpfad.its
+        path = "results/" + log_name
         with open(path + "_log", "w") as f:
             f.write("\nUnknowns:\t %.0f\n" % (len(self.mesh.all_volumes)))
             f.write("Umin:\t %.6f\n" % (min_p))
@@ -106,6 +106,7 @@ class DiscreteMaxPrinciple:
                 "Non-zero matrix:\t %.0f\n"
                 % (self.mpfad.T.NumGlobalNonzeros())
             )
+            f.write("Num iterations: \t %.6g\n" % its)
         self.mpfad.record_data(path + ".vtk")
 
     def perm_tensor_lai(self, x, y, z):
