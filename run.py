@@ -21,7 +21,7 @@ fvcaMeshesB = [
     BenchMeshGenerator(str(case)).generate_mesh()
     for case in benchmark_fvca_cases
 ]
-FVCA = True
+FVCA = False
 if FVCA:
     for mesh in fvcaMeshesB:
         for im in interpolation_methods:
@@ -43,7 +43,7 @@ if MGE:
             TestCasesMGE(mesh, im).run_case("mge_test_case_2_mesh_" + str(mesh) + "_", "mge_test_case_2")
             # TestCasesMGE(mesh, im).run_case("mge_test_case_3_", "mge_test_case_3")
             # TestCasesMGE(mesh, im).run_case("mge_test_case_5_", "mge_test_case_5")
-NONLINEAR = False
+NONLINEAR = True
 if NONLINEAR:
     cases_dmp = ["16x16x16"]
     for case in cases_dmp:

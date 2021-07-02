@@ -2,7 +2,7 @@ import pdb
 
 import numpy as np
 # from solvers.MpfaD import MpfaD3D
-from solvers.nMpfaD import MpfaD3D
+from solvers.MpfaD import MpfaD3D
 # from mpfad.interpolation.LPEW3 import LPEW3
 from solvers.interpolation.LPEW3 import LPEW3
 from preprocessor.mesh_preprocessor import MeshManager

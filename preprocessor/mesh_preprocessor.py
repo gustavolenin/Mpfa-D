@@ -13,6 +13,7 @@ class MeshManager:
         self.root_set = self.mb.get_root_set()
         self.mtu = topo_util.MeshTopoUtil(self.mb)
 
+
         self.mb.load_file(mesh_file)
 
         self.physical_tag = self.mb.tag_get_handle("MATERIAL_SET")
@@ -58,8 +59,14 @@ class MeshManager:
             "krO", 1, types.MB_TYPE_DOUBLE, types.MB_TAG_SPARSE, True,
         )
 
-        self.face_mobility_tag = self.mb.tag_get_handle(
-            "Mobility", 1, types.MB_TYPE_DOUBLE, types.MB_TAG_SPARSE, True,
+        self.mobility_w_tag = self.mb.tag_get_handle(
+            "Water Mobility", 1, types.MB_TYPE_DOUBLE, types.MB_TAG_SPARSE, True,
+        )
+        self.mobility_o_tag = self.mb.tag_get_handle(
+            "Oil Mobility", 1, types.MB_TYPE_DOUBLE, types.MB_TAG_SPARSE, True,
+        )
+        self.mobility_tag = self.mb.tag_get_handle(
+            "Total Mobility", 1, types.MB_TYPE_DOUBLE, types.MB_TAG_SPARSE, True,
         )
         self.node_pressure_tag = self.mb.tag_get_handle(
             "Node Pressure", 1, types.MB_TYPE_DOUBLE, types.MB_TAG_SPARSE, True
@@ -68,6 +75,10 @@ class MeshManager:
         # Iniciate material props
         self.perm_tag = self.mb.tag_get_handle(
             "Permeability", 9, types.MB_TYPE_DOUBLE, types.MB_TAG_SPARSE, True
+        )
+
+        self.abs_perm_tag = self.mb.tag_get_handle(
+            "Abs Permeability", 9, types.MB_TYPE_DOUBLE, types.MB_TAG_SPARSE, True
         )
 
         self.pressure_tag = self.mb.tag_get_handle(
@@ -129,7 +140,6 @@ class MeshManager:
     ):
         try:
             information_tag = self.mb.tag_get_handle(information_name)
-
         except Exception:
             information_tag = self.mb.tag_get_handle(
                 information_name,
@@ -164,7 +174,6 @@ class MeshManager:
                         self.sat_BC_faces = self.sat_BC_faces | set(
                             group_elements
                         )
-
                     for element in group_elements:
                         self.mb.tag_set_data(information_tag, element, value)
 
