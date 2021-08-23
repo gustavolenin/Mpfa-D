@@ -76,6 +76,9 @@ class MpfaD3D:
         #                     dtype=np.float)
         # self.Q = lil_matrix((len(self.volumes), 1), dtype=np.float)
 
+        self.nodes_ws = mesh_data.nodes_ws
+        self.nodes_nts = mesh_data.nodes_nts
+
     def record_data(self, file_name):
         """Record data to file."""
         volumes = self.mb.get_entities_by_dimension(0, 3)
@@ -119,8 +122,6 @@ class MpfaD3D:
     # @celery.task
     def get_nodes_weights(self, method):
         """Return the node weights."""
-        self.nodes_ws = {}
-        self.nodes_nts = {}
         # This is the limiting part of the interpoation method. The Dict
         for node in self.intern_nodes:
             self.nodes_ws[node] = method(node)

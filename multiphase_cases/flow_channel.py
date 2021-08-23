@@ -1,3 +1,5 @@
+import os
+
 import pdb
 
 import numpy as np
@@ -27,7 +29,7 @@ class FlowChannel:
             for prop, value in two_phase_props.items()
         ]
         bc_props = {
-            "SW_BC": {102: 1.0, 101: 0.2},
+            "SW_BC": {102: 1.0, 101: 0.2, 201: 0.2},
             "Dirichlet": {102: 1.0, 101: 0.0},
             "Neumann": {201: 0.0}
         }
@@ -55,12 +57,27 @@ class FlowChannel:
         )
 
     def impes(self):
-        t = 0
+        # t = self.foum.delta_t
+        # looper = 0
+        # tmax = .1
         # while t < tmax:
+        # print(looper)
         self.foum.set_relative_perms()
         self.foum.set_mobility()
         self.foum.set_mobility_in_perm()
         self.mpfad.run_solver(LPEW3(self.mesh).interpolate)
+        self.foum.tag_velocity()
+        self.foum.calculate_face_water_sat()
+        self.foum.calculate_water_flux()
+
+        # t += self.foum.delta_t
+        # print("sim time elapsed: ", t)
+        # self.foum.update_sat()
+        # looper += 1
+        # filename = os.path.basename(__file__).replace(".py", "")
+        # self.mpfad.record_data(f"{filename}_{looper}.vtk")
+            # if looper > 100:
+            #     break
             # calcular velocidade
             # calcula cfl => calcula delta_t
             # variacao maxima de saturacao dado pelo user, delta t passar, volta pro passo minimo

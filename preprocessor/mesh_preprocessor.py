@@ -5,6 +5,14 @@ from pymoab import types
 from pymoab import topo_util
 
 
+def get_tetra_volume(tet_nodes):
+    vect_1 = tet_nodes[1] - tet_nodes[0]
+    vect_2 = tet_nodes[2] - tet_nodes[0]
+    vect_3 = tet_nodes[3] - tet_nodes[0]
+    vol_eval = abs(np.dot(np.cross(vect_1, vect_2), vect_3)) / 6.0
+    return vol_eval
+
+
 class MeshManager:
     def __init__(self, mesh_file, dim=3):
 
@@ -36,6 +44,14 @@ class MeshManager:
         # Initiate BC and IC variables to the transport problem
         self.water_sat_tag = self.mb.tag_get_handle(
             "Water_Sat", 1, types.MB_TYPE_DOUBLE, types.MB_TAG_SPARSE, True,
+        )
+
+        self.face_water_sat_tag = self.mb.tag_get_handle(
+            "Face_Water_Sat", 1, types.MB_TYPE_DOUBLE, types.MB_TAG_SPARSE, True,
+        )
+
+        self.water_volume_flux = self.mb.tag_get_handle(
+            "Volume Flux", 1, types.MB_TYPE_DOUBLE, types.MB_TAG_SPARSE, True,
         )
 
         self.water_sat_bc_tag = self.mb.tag_get_handle(
@@ -75,6 +91,14 @@ class MeshManager:
         # Iniciate material props
         self.perm_tag = self.mb.tag_get_handle(
             "Permeability", 9, types.MB_TYPE_DOUBLE, types.MB_TAG_SPARSE, True
+        )
+
+        self.volume_tag = self.mb.tag_get_handle(
+            "Volume", 1, types.MB_TYPE_DOUBLE, types.MB_TAG_SPARSE, True
+        )
+
+        self.face_area_tag = self.mb.tag_get_handle(
+            "Area", 1, types.MB_TYPE_DOUBLE, types.MB_TAG_SPARSE, True
         )
 
         self.abs_perm_tag = self.mb.tag_get_handle(
@@ -118,6 +142,9 @@ class MeshManager:
         self.neumann_faces = set()
         self.sat_BC_faces = set()
 
+        self.nodes_ws = dict()
+        self.nodes_nts = dict()
+
     def create_vertices(self, coords):
         new_vertices = self.mb.create_vertices(coords)
         self.all_nodes.append(new_vertices)
@@ -127,6 +154,34 @@ class MeshManager:
         new_volume = self.mb.create_element(poly_type, vertices)
         self.all_volumes.append(new_volume)
         return new_volume
+
+
+    def calculate_volume(self):
+        volumes_volumes = []
+        for a_volume in self.all_volumes:
+            vol_faces = self.mtu.get_bridge_adjacencies(a_volume, 2, 2)
+            vol_nodes = self.mtu.get_bridge_adjacencies(a_volume, 0, 0)
+            vol_crds = self.mb.get_coords(vol_nodes)
+            vol_crds = np.reshape(vol_crds, ([4, 3]))
+            vol_volume = get_tetra_volume(vol_crds)
+            volumes_volumes.append(vol_volume)
+        self.mb.tag_set_data(self.volume_tag, self.all_volumes, volumes_volumes)
+
+    def calculate_face_areas(self):
+        face_verts = [
+            self.mtu.get_bridge_adjacencies(face, 2, 0) for face in self.all_faces
+        ]
+        areas = []
+        for verts in face_verts:
+            verts_coords = [
+                self.mb.get_coords(vert) for vert in verts
+            ]
+            vec1 = verts_coords[0] - verts_coords[1]
+            vec2 = verts_coords[0] - verts_coords[2]
+            normal_vec = np.cross(vec1, vec2) / 2.0
+            area = np.sqrt(sum(normal_vec * normal_vec))
+            areas.append(area)
+        self.mb.tag_set_data(self.face_area_tag, self.all_faces, areas)
 
     def set_global_id(self):
         vol_ids = []
