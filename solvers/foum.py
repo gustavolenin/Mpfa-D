@@ -70,7 +70,7 @@ class Foum:
         mesh_data.calculate_face_areas()
 
         self.delta_t = 0
-        self.delta_sat_max = 0.1
+        self.delta_sat_max = 0.4
 
     def set_relative_perms(self, nw=2, no=2):
         sat_W = self.mb.tag_get_data(self.water_sat_tag, self.volumes)
@@ -108,7 +108,7 @@ class Foum:
         )
         delta_t = np.asarray(
             [
-                (self.cfl * (volume * phi)) * velocity
+                (self.cfl * (volume * phi)) / velocity
                 for volume, phi, velocity in zip(volumes, phis, velocities) if
                 velocity > 0
             ]
@@ -144,13 +144,12 @@ class Foum:
         for volume in self.volumes:
             adj_faces = self.mtu.get_bridge_adjacencies(volume, 2, 2)
             face_areas = self.mb.tag_get_data(self.face_area_tag, adj_faces)
-            volume_velocities = self.mb.tag_get_data(self.velocity_tag, adj_faces)
+            face_velocities = self.mb.tag_get_data(self.velocity_tag, adj_faces)
             face_sats = self.mb.tag_get_data(self.face_water_sat_tag, adj_faces)
-            volume_flux = sum(face_sats * volume_velocities * face_areas)
+            volume_flux = sum(face_sats * face_velocities * face_areas)
             volume_fluxes.append(volume_flux)
         volume_fluxes = np.asarray(volume_fluxes).flatten()
         self.mb.tag_set_data(self.water_volume_flux, self.volumes, volume_fluxes)
-
 
     def get_delta_t_for_delta_sat_max(self):
         phis = np.repeat(1, len(self.all_volumes))
@@ -165,69 +164,46 @@ class Foum:
     def use_delta_t_min(self):
         delta_t1 = self.get_delta_t()
         delta_t2 = self.get_delta_t_for_delta_sat_max()
-        # self.delta_t = min(delta_t1, delta_t2)
-        self.delta_t = delta_t2
+        self.delta_t = min(delta_t1, delta_t2)
 
-    def update_sat(self):
-        self.use_delta_t_min()
+    def calculate_sat(self):
         phis = np.repeat(1, len(self.all_volumes))
         volumes = self.mb.tag_get_data(self.volume_tag, self.all_volumes).flatten()
         water_fluxes = abs(
             self.mb.tag_get_data(self.water_volume_flux, self.volumes)
         ).flatten()
-        sats = self.mb.tag_get_data(self.water_sat_tag, self.volumes)
+        sats = self.mb.tag_get_data(self.water_sat_tag, self.volumes).flatten()
         sats += water_fluxes / (volumes * phis) * self.delta_t
-        # inner_vols = [volume for volume in self.volumes if len(self.mtu.get_bridge_adjacencies(volume, 2, 3)) > 3]
-        # boundary_vols = [volume for volume in self.volumes if len(self.mtu.get_bridge_adjacencies(volume, 2, 3)) < 4]
-        # inner_sats_to_update = []
-        # for volume in inner_vols:
-        #     volume_sat = self.mb.tag_get_data(self.water_sat_tag, volume)
-        #     volume_sat += sum(
-        #         [(self.mb.tag_get_data(self.velocity_tag, face) * self.mb.tag_get_data(self.water_sat_tag, vol.pop()))
-        #          for face, vol in
-        #          [(face, set(self.mtu.get_bridge_adjacencies(face, 2, 3)) - {volume}) for face in
-        #           self.mtu.get_bridge_adjacencies(volume, 2, 2)]]) * self.delta_t / self.mb.tag_get_data(
-        #         self.volume_tag, volume
-        #     )
-        #     # if volume_sat > 1.:
-        #     #     volume_sat = 1.0
-        #     # if volume_sat < 0.:
-        #     #     volume_sat = 0.0
-        #     inner_sats_to_update.append(volume_sat)
-        # boundary_sats_to_update = []
-        # for volume in boundary_vols:
-        #     volume_sat = self.mb.tag_get_data(self.water_sat_tag, volume)
-        #     for face, vol in [
-        #         (face, set(self.mtu.get_bridge_adjacencies(face, 2, 3)) - {volume}) for face in
-        #         self.mtu.get_bridge_adjacencies(volume, 2, 2)
-        #     ]:
-        #         if vol:
-        #             volume_sat += self.mb.tag_get_data(self.velocity_tag, face) * \
-        #                           self.mb.tag_get_data(self.water_sat_tag, vol.pop()) * self.delta_t / self.mb.tag_get_data(
-        #                 self.volume_tag, volume
-        #             )
-        #         else:
-        #             if face in self.dirichlet_faces:
-        #                 volume_sat += self.mb.tag_get_data(self.velocity_tag, face) * \
-        #                               self.mb.tag_get_data(self.water_sat_bc_tag,
-        #                                                    face) * self.delta_t / self.mb.tag_get_data(
-        #                     self.volume_tag, volume
-        #                 )
-        #             elif face in self.neumann_faces:
-        #                 volume_sat += self.mb.tag_get_data(self.neumann_tag, face)[0][0] * \
-        #                               self.mb.tag_get_data(self.water_sat_bc_tag,
-        #                                                    face) * self.delta_t / self.mb.tag_get_data(
-        #                     self.volume_tag, volume
-        #                 )
-        #             else:
-        #                 print("something is wrong")
-        #     # if volume_sat > 1.:
-        #     #     volume_sat = 1.0
-        #     # if volume_sat < 0.:
-        #     #     volume_sat = 0.0
-        #     boundary_sats_to_update.append(volume_sat)
-        # self.mb.tag_set_data(self.water_sat_tag, inner_vols, np.asarray(inner_sats_to_update).flatten())
-        # self.mb.tag_set_data(self.water_sat_tag, boundary_vols, np.asarray(boundary_sats_to_update).flatten())
+        return sats
+
+    def update_sat(self):
+        self.use_delta_t_min()
+        sats = self.mb.tag_get_data(self.water_sat_tag, self.volumes)
+        water_sat_min = self.mb.tag_get_data(self.water_sat_i_tag, self.volumes).max()
+        water_sat_max = 1 - self.mb.tag_get_data(self.oil_sat_i_tag, self.volumes).min()
+        new_sats = self.calculate_sat()
+        max_delta = abs(new_sats - sats).max() > self.delta_sat_max
+        irr_boundary_sat = any(new_sats > water_sat_max) | any(new_sats < water_sat_min)
+        counts = 0
+        while any([max_delta, irr_boundary_sat]):
+            self.delta_t /= 2
+            new_sats = self.calculate_sat()
+            max_delta = abs(new_sats - sats).max() > self.delta_sat_max
+            irr_boundary_sat = any(new_sats > water_sat_max) | any(new_sats < water_sat_min)
+            counts += 1
+            print(self.delta_t)
+            if counts > 100:
+                break
+        print(new_sats.flatten())
+        self.mb.tag_set_data(self.water_sat_tag, self.volumes, new_sats)
+
+
+        # Comparar novas saturacoes com as anteriores e garantir qu o delta de
+        # sat no tempo nao viola o max delta sat
+        # se violar, reduz o passo de tempo
+        # garantir que saturação residual não está sendo extrapolada
+        # caso extrapole, reduz o passo de tempo.
+
 
     def calc_fractional_flux(self, lambda_w, lambda_o):
         return lambda_w / (lambda_w + lambda_o)
@@ -397,6 +373,7 @@ class Foum:
 # fc = FlowChannel()
 # fc.impes()
 # self = fc.foum
+# self.update_sat()
 # left_volumes, left_volumes_ids = fc.foum.get_bc_volumes()
 # I, J, K = fc.foum.get_dirichlet_face_verts()
 # JI, JK = fc.foum.get_face_aux_vectors(I, J, K)
