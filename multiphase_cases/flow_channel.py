@@ -14,15 +14,15 @@ class FlowChannel:
 
     def __init__(self):
         K_1 = np.array(
-            [10000.0, 0.0, 0.0,
-             0.0, 10000.0, 0.0,
-             0.0, 0.0, 10000.0]
+            [1.0, 0.0, 0.0,
+             0.0, 1.0, 0.0,
+             0.0, 0.0, 1.0]
         )
         # mesh_test_conservative
-        self.mesh = MeshManager("meshes/mesh_test_conservative.msh", dim=3)
-        #self.mesh = MeshManager("meshes/test_mesh_5_vols.h5m", dim=3)
+        # self.mesh = MeshManager("meshes/mesh_test_conservative.msh", dim=3)
+        self.mesh = MeshManager("meshes/test_mesh_5_vols.h5m", dim=3)
         two_phase_props = {
-            "Water_Sat": 0.5, "Water_Sat_i": 0.15, "Oil_Sat_i": 0.1, "Abs Permeability": K_1
+            "Water_Sat": 0.20, "Water_Sat_i": 0.15, "Oil_Sat_i": 0.10, "Abs Permeability": K_1
         }
         [
             self.mesh.set_media_property(prop, {1: value}, dim_target=3)
@@ -30,7 +30,7 @@ class FlowChannel:
         ]
         bc_props = {
             "SW_BC": {102: 1.0, 101: 0.2},
-            "Dirichlet": {102: 1000.0, 101: 0.0},
+            "Dirichlet": {102: 1.0, 101: 0.0},
             "Neumann": {201: 0.0}
         }
         [
@@ -57,26 +57,26 @@ class FlowChannel:
         )
 
     def impes(self):
-        t = self.foum.delta_t
-        looper = 0
-        tmax = .1
-        while t < tmax:
-            self.foum.set_relative_perms()
-            self.foum.set_mobility()
-            self.foum.set_mobility_in_perm()
-            self.mpfad.run_solver(LPEW3(self.mesh).interpolate)
-            self.foum.tag_velocity()
-            self.foum.calculate_face_water_sat()
-            self.foum.calculate_water_flux()
-            self.foum.update_sat()
-            t += self.foum.delta_t
-            print("sim time elapsed: ", t)
-            self.foum.update_sat()
-            looper += 1
-            filename = os.path.basename(__file__).replace(".py", "")
-            self.mpfad.record_data(f"{filename}_{looper}.vtk")
-            if looper > 100:
-                break
+        # t = 0.0001  # self.foum.delta_t
+        # looper = 0
+        # tmax = .1
+        # while t < tmax:
+        self.foum.set_relative_perms()
+        self.foum.set_mobility()
+        self.foum.set_mobility_in_perm()
+        self.mpfad.run_solver(LPEW3(self.mesh).interpolate)
+        self.foum.tag_velocity()
+        self.foum.calculate_face_water_sat()
+        self.foum.calculate_water_flux()
+        # self.foum.update_sat()
+            # t += self.foum.delta_t
+            # print("sim time elapsed: ", t)
+            # self.foum.update_sat()
+            # looper += 1
+            # filename = os.path.basename(__file__).replace(".py", "")
+            # self.mpfad.record_data(f"{filename}_{looper}.vtk")
+            # if looper > 100:
+            #     break
             # calcular velocidade
             # calcula cfl => calcula delta_t
             # variacao maxima de saturacao dado pelo user, delta t passar, volta pro passo minimo

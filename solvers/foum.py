@@ -49,6 +49,7 @@ class Foum:
         self.water_sat_bc_tag = mesh_data.water_sat_bc_tag
         self.face_water_sat_tag = mesh_data.face_water_sat_tag
         self.water_volume_flux = mesh_data.water_volume_flux
+        self.water_volume_flux2 = mesh_data.water_volume_flux2
         self.rel_perm_w_tag = mesh_data.rel_perm_w_tag
         self.rel_perm_o_tag = mesh_data.rel_perm_o_tag
         self.water_sat_tag = mesh_data.water_sat_tag
@@ -76,7 +77,7 @@ class Foum:
         sat_W = self.mb.tag_get_data(self.water_sat_tag, self.volumes)
         sat_W_i = self.mb.tag_get_data(self.water_sat_i_tag, self.volumes)
         sat_O_i = self.mb.tag_get_data(self.oil_sat_i_tag, self.volumes)
-        krw = ((sat_W - sat_W_i) / (1 - sat_W - sat_W_i - sat_O_i)) ** nw
+        krw = ((sat_W - sat_W_i) / (1 - sat_W_i - sat_O_i)) ** nw
         kro = ((1 - sat_W - sat_O_i) / (1 - sat_W_i - sat_O_i)) ** no
         self.mb.tag_set_data(self.rel_perm_w_tag, self.volumes, krw)
         self.mb.tag_set_data(self.rel_perm_o_tag, self.volumes, kro)
@@ -141,14 +142,24 @@ class Foum:
 
     def calculate_water_flux(self):
         volume_fluxes = []
+        _volume_fluxes = []
         for volume in self.volumes:
             adj_faces = self.mtu.get_bridge_adjacencies(volume, 2, 2)
             face_areas = self.mb.tag_get_data(self.face_area_tag, adj_faces)
             face_velocities = self.mb.tag_get_data(self.velocity_tag, adj_faces)
             face_sats = self.mb.tag_get_data(self.face_water_sat_tag, adj_faces)
             volume_flux = sum(face_sats * face_velocities * face_areas)
+            # print(volume_flux, len(adj_faces))
+            if abs(volume_flux) > 1e-10:
+                _volume_flux = 1
+            else:
+                _volume_flux = 0
             volume_fluxes.append(volume_flux)
+            _volume_fluxes.append(_volume_flux)
+
+        print(volume_fluxes)
         volume_fluxes = np.asarray(volume_fluxes).flatten()
+        # self.mb.tag_set_data(self.water_volume_flux2, self.volumes, _volume_fluxes)
         self.mb.tag_set_data(self.water_volume_flux, self.volumes, volume_fluxes)
 
     def get_delta_t_for_delta_sat_max(self):
@@ -169,8 +180,8 @@ class Foum:
     def calculate_sat(self):
         phis = np.repeat(1, len(self.all_volumes))
         volumes = self.mb.tag_get_data(self.volume_tag, self.all_volumes).flatten()
-        water_fluxes = abs(
-            self.mb.tag_get_data(self.water_volume_flux, self.volumes)
+        water_fluxes = self.mb.tag_get_data(
+            self.water_volume_flux, self.volumes
         ).flatten()
         sats = self.mb.tag_get_data(self.water_sat_tag, self.volumes).flatten()
         sats += water_fluxes / (volumes * phis) * self.delta_t
@@ -334,7 +345,6 @@ class Foum:
                 (np.dot(tan_JI, LJ) / face_area ** 2) * N_IJK
                 - (h_L / (face_area)) * tan_JI
             )
-
             grad_p = -(1 / (6 * vol_volume)) * (
                 grad_normal + grad_cross_I + grad_cross_K
             )

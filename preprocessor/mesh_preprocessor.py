@@ -54,6 +54,10 @@ class MeshManager:
             "Volume Flux", 1, types.MB_TYPE_DOUBLE, types.MB_TAG_SPARSE, True,
         )
 
+        self.water_volume_flux2 = self.mb.tag_get_handle(
+            "Volume Flux 2", 1, types.MB_TYPE_INTEGER, types.MB_TAG_SPARSE, True,
+        )
+
         self.water_sat_bc_tag = self.mb.tag_get_handle(
             "SW_BC", 1, types.MB_TYPE_DOUBLE, types.MB_TAG_SPARSE, True,
         )
