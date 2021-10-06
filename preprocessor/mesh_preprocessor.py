@@ -37,6 +37,14 @@ class MeshManager:
             "Dirichlet", 1, types.MB_TYPE_DOUBLE, types.MB_TAG_SPARSE, True
         )
 
+        self.injection_well_tag = self.mb.tag_get_handle(
+            "Injection Well", 1, types.MB_TYPE_DOUBLE, types.MB_TAG_SPARSE, True
+        )
+
+        self.production_well_tag = self.mb.tag_get_handle(
+            "Production Well", 1, types.MB_TYPE_DOUBLE, types.MB_TAG_SPARSE, True
+        )
+
         self.neumann_tag = self.mb.tag_get_handle(
             "Neumann", 1, types.MB_TYPE_DOUBLE, types.MB_TAG_SPARSE, True
         )
@@ -145,6 +153,7 @@ class MeshManager:
         self.dirichlet_faces = set()
         self.neumann_faces = set()
         self.sat_BC_faces = set()
+        self.dirichlet_volumes = set()
 
         self.nodes_ws = dict()
         self.nodes_nts = dict()

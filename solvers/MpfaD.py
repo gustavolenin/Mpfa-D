@@ -60,6 +60,7 @@ class MpfaD3D:
         self.dirichlet_faces = mesh_data.dirichlet_faces
         self.neumann_faces = mesh_data.neumann_faces
         self.intern_faces = mesh_data.intern_faces()
+        self.dirichlet_volumes = mesh_data.dirichlet_volumes
         # self.intern_faces = set(mesh_data.all_faces).difference(
         #     self.dirichlet_faces | self.neumann_faces
         # )

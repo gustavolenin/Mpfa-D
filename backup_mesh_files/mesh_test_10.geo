@@ -46,16 +46,6 @@ Surface Loop(25) = {22, 20, 18, 24, 16, 14};
 Volume(26) = {25};
 
 mesh_size = 1.5;
-//Transfinite Line {6, 8, 11, 10, 12, 9, 4, 2} = mesh_size;
-//Transfinite Line {1, 3, 7, 5} = mesh_size/2.0
-//Transfinite Surface{14};
-//Transfinite Surface{16};
-//Transfinite Surface{18};
-//Transfinite Surface{20};
-//Transfinite Surface{22};
-//Transfinite Surface{24};
-//Transfinite Volume{26};
-//Recombine Surface{14, 15, 16, 18, 20, 22, 24};
 
 Physical Point(102) = {1, 4, 8, 5};
 Physical Point(202) = {2, 3, 7, 6};
@@ -65,3 +55,49 @@ Physical Surface(102) = {24};
 Physical Surface(202) = {20};
 
 Physical Volume(1) = {26};
+//+
+Physical Point(102) -= {8};
+//+
+Physical Point(102) -= {4};
+//+
+Physical Point(102) -= {5};
+//+
+Physical Point(102) -= {1};
+//+
+Physical Point(202) -= {3, 7, 6, 2};
+//+
+Physical Surface(102) -= {16, 20, 22, 14, 24, 18};
+//+
+Physical Surface(201) -= {20, 22, 14, 16, 18};
+//+
+Physical Surface(202) -= {20};
+//+
+Physical Surface("Neumann", 201) = {16, 22, 24, 20, 14, 18};
+//+
+Physical Point(101) = {1};
+//+
+Physical Point(102) = {7};
+//+
+Physical Surface(" Neumann", 201) -= {24};
+//+
+Physical Surface(" Neumann", 201) -= {20};
+//+
+Physical Surface("Dirichlet", 101) = {24};
+//+
+Physical Surface("Dirichlet", 102) = {20};
+//+
+Physical Surface("Dirichlet", 102) = {20};
+//+
+Physical Surface("Dirichlet", 102) = {20};
+//+
+Physical Surface("Dirichlet", 101) += {20};
+//+
+Physical Surface("Dirichlet", 102) = {20};
+//+
+Physical Surface("Dirichlet", 102) = {20};
+//+
+Physical Surface(" Dirichlet", 101) -= {20};
+//+
+Physical Surface("Dirichlet", 102) = {20};
+//+
+Physical Surface(102) = {20};
